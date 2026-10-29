@@ -1,0 +1,278 @@
+{
+    "name": "LeadPilot 02 - AI Lead Qualification",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-ai-qualification",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n02-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                200
+            ],
+            "webhookId": "leadpilot-ai-qualification"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n02-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n02-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n02-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const ID = /^[A-Za-z0-9_-]{1,128}$/; const d = (b.data && typeof b.data === 'object') ? b.data : {}; const key = String(b.idempotencyKey || ''); if (!ID.test(String(b.workspaceId || '')) || !ID.test(String(b.executionId || ''))) return []; for (const f of ['leadId', 'approvalId', 'bookingId']) { if (d[f] !== undefined && d[f] !== null && !ID.test(String(d[f]))) return []; } const sd = $getWorkflowStaticData('global'); sd.seen = sd.seen || {}; if (key && sd.seen[key]) return []; if (key) { sd.seen[key] = Date.now(); const ks = Object.keys(sd.seen); if (ks.length > 500) { ks.sort((x, y) => sd.seen[x] - sd.seen[y]).slice(0, ks.length - 500).forEach(k => delete sd.seen[k]); } } return [{ json: { workspaceId: b.workspaceId, executionId: b.executionId, mode: b.mode || 'live', data: d } }];"
+            },
+            "id": "n02-validate",
+            "name": "Validate and dedupe",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/leads/' + $json.data.leadId + '/qualify' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 120000
+                }
+            },
+            "id": "n02-qualify",
+            "name": "Qualify lead",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                960,
+                120
+            ],
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 3000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Validate and dedupe').first().json.workspaceId + '/executions/' + $('Validate and dedupe').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'success', message: $json.result ? ('Lead qualified with score ' + $json.result.score + ' (' + $json.result.priority + ' priority).') : 'Lead qualified.' }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n02-cb-ok",
+            "name": "Callback: success",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1200,
+                60
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Validate and dedupe').first().json.workspaceId + '/executions/' + $('Validate and dedupe').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'failed', message: String(($json.error && $json.error.message) || 'Qualification request failed.').slice(0, 500) }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n02-cb-fail",
+            "name": "Callback: failed",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1200,
+                200
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Validate and dedupe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate and dedupe": {
+            "main": [
+                [
+                    {
+                        "node": "Qualify lead",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Qualify lead": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Callback: failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

@@ -1,0 +1,308 @@
+{
+    "name": "LeadPilot 01 - Inquiry Ingestion",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-inquiry-ingestion",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n01-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                200
+            ],
+            "webhookId": "leadpilot-inquiry-ingestion"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n01-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n01-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                380
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const src = (b.data && typeof b.data === 'object') ? b.data : b; const ID = /^[A-Za-z0-9_-]{1,128}$/; const SOURCES = ['website','email','whatsapp','referral','social','phone','manual','webhook','playground','other']; const wsId = String(b.workspaceId || src.workspaceId || ''); const str = (v, n) => (typeof v === 'string' && v.trim()) ? v.trim().slice(0, n) : undefined; const eventId = (str(src.eventId, 128) || str(j.headers['idempotency-key'], 128) || '').replace(/[^A-Za-z0-9_.:-]/g, ''); const payload = { customerName: str(src.customerName, 120), customerEmail: str(src.customerEmail, 254), customerPhone: str(src.customerPhone, 32), company: str(src.company, 120), source: SOURCES.includes(src.source) ? src.source : 'website', message: str(src.message, 5000), eventId: eventId || undefined }; const valid = ID.test(wsId) && !!payload.message; return [{ json: { valid, workspaceId: wsId, payload } }];"
+            },
+            "id": "n01-normalize",
+            "name": "Normalize and validate",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                480,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $json.valid }}",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n01-valid",
+            "name": "Payload valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                720,
+                120
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n01-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                960,
+                40
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'invalid payload: workspaceId and message are required' }) }}",
+                "options": {
+                    "responseCode": 400
+                }
+            },
+            "id": "n01-400",
+            "name": "Respond 400",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                960,
+                220
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/inquiries' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.payload) }}",
+                "options": {
+                    "timeout": 120000
+                }
+            },
+            "id": "n01-forward",
+            "name": "Forward to backend",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1200,
+                40
+            ],
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 2000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Normalize and validate').first().json.workspaceId + '/errors' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ workflow: 'inquiry_ingestion', node: 'Forward to backend', message: String(($json.error && $json.error.message) || 'Forwarding the inquiry failed.').slice(0, 500), retryStatus: 'exhausted' }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n01-report",
+            "name": "Report failure",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1440,
+                140
+            ],
+            "onError": "continueRegularOutput"
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize and validate",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize and validate": {
+            "main": [
+                [
+                    {
+                        "node": "Payload valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Payload valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 400",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Forward to backend",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Forward to backend": {
+            "main": [
+                [],
+                [
+                    {
+                        "node": "Report failure",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

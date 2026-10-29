@@ -1,0 +1,50 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: leadpilot-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # Service-to-service URL inside the compose network
+      N8N_BASE_URL: http://n8n:5678
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/firebase-sa.json
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      # Put your Firebase service account JSON at ./secrets/firebase-sa.json (git-ignored)
+      - ./secrets/firebase-sa.json:/secrets/firebase-sa.json:ro
+    restart: unless-stopped
+    depends_on:
+      - n8n
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: leadpilot-n8n
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-UTC}
+      TZ: ${GENERIC_TIMEZONE:-UTC}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      # Exposed to workflows via $env.*
+      BACKEND_URL: ${N8N_BACKEND_URL:-http://backend:8080}
+      N8N_SHARED_SECRET: ${N8N_SHARED_SECRET}
+      BACKEND_CALLBACK_SECRET: ${BACKEND_CALLBACK_SECRET}
+      LEADPILOT_WORKSPACE_ID: ${LEADPILOT_WORKSPACE_ID:-}
+      OUTBOUND_FROM_EMAIL: ${OUTBOUND_FROM_EMAIL:-}
+      SUMMARY_TO_EMAIL: ${SUMMARY_TO_EMAIL:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
+volumes:
+  n8n_data:

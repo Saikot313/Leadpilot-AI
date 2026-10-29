@@ -1,0 +1,584 @@
+{
+    "name": "LeadPilot 06 - Booking Processing",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-booking-processing",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n06-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                260
+            ],
+            "webhookId": "leadpilot-booking-processing"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n06-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n06-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n06-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const ID = /^[A-Za-z0-9_-]{1,128}$/; const d = (b.data && typeof b.data === 'object') ? b.data : {}; const key = String(b.idempotencyKey || ''); if (!ID.test(String(b.workspaceId || '')) || !ID.test(String(b.executionId || ''))) return []; for (const f of ['leadId', 'approvalId', 'bookingId']) { if (d[f] !== undefined && d[f] !== null && !ID.test(String(d[f]))) return []; } if (!d.bookingId) return []; const sd = $getWorkflowStaticData('global'); sd.seen = sd.seen || {}; if (key && sd.seen[key]) return []; if (key) { sd.seen[key] = Date.now(); const ks = Object.keys(sd.seen); if (ks.length > 500) { ks.sort((x, y) => sd.seen[x] - sd.seen[y]).slice(0, ks.length - 500).forEach(k => delete sd.seen[k]); } } return [{ json: { workspaceId: b.workspaceId, executionId: b.executionId, mode: b.mode || 'live', data: d } }];"
+            },
+            "id": "n06-validate",
+            "name": "Validate and dedupe",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const c = $input.first().json; const d = c.data || {}; const EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+([.][A-Za-z0-9-]+)*[.][A-Za-z]{2,}$/; const from = String($env.OUTBOUND_FROM_EMAIL || '').trim(); const to = String(d.customerEmail || '').trim(); const name = String(d.customerName || 'there').replace(/[\\r\\n]+/g, ' ').trim().slice(0, 120) || 'there'; let when = String(d.startAt || ''); try { when = new Date(d.startAt).toLocaleString('en-GB', { timeZone: d.timezone || 'UTC', dateStyle: 'full', timeStyle: 'short' }) + ' (' + (d.timezone || 'UTC') + ')'; } catch (e) {} const rem = Date.parse(d.startAt) - 24 * 3600 * 1000; const reminderAt = (rem > Date.now() + 60000) ? new Date(rem).toISOString() : ''; let canSend = true; let notSentStatus = 'success'; let reason = ''; if (!EMAIL.test(to)) { canSend = false; reason = 'No valid customer email on the booking. Nothing was sent.'; } else if (!from) { canSend = false; notSentStatus = 'failed'; reason = 'OUTBOUND_FROM_EMAIL is not set in n8n. Nothing was sent.'; } return [{ json: { workspaceId: c.workspaceId, executionId: c.executionId, bookingId: d.bookingId, canSend, notSentStatus, reason, from, to, subject: 'Your meeting is confirmed', text: 'Hi ' + name + ',\\n\\nYour meeting is confirmed for ' + when + '.\\n\\nIf you need to change it, just reply to this email.\\n\\nBest regards', reminderSubject: 'Reminder: your meeting is tomorrow', reminderText: 'Hi ' + name + ',\\n\\nThis is a reminder of your meeting on ' + when + '.\\n\\nBest regards', reminderAt } }];"
+            },
+            "id": "n06-prepare",
+            "name": "Prepare booking emails",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                960,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $json.canSend }}",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n06-can",
+            "name": "Can send?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1200,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $json.from }}",
+                "toEmail": "={{ $json.to }}",
+                "subject": "={{ $json.subject }}",
+                "emailFormat": "text",
+                "text": "={{ $json.text }}",
+                "options": {}
+            },
+            "id": "n06-send",
+            "name": "Send confirmation (SMTP)",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1440,
+                100
+            ],
+            "notes": "Select your SMTP credential on this node after importing.",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Prepare booking emails').first().json.workspaceId + '/executions/' + $('Prepare booking emails').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'success', message: 'Confirmation email handed to the SMTP server.' + ($('Prepare booking emails').first().json.reminderAt ? ' A reminder is scheduled.' : ' No reminder: the meeting is within 24 hours.') }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n06-cb-ok",
+            "name": "Callback: confirmation sent",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1680,
+                40
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $('Prepare booking emails').first().json.reminderAt }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n06-due",
+            "name": "Reminder due?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1920,
+                40
+            ]
+        },
+        {
+            "parameters": {
+                "resume": "specificTime",
+                "dateTime": "={{ $('Prepare booking emails').first().json.reminderAt }}"
+            },
+            "id": "n06-wait",
+            "name": "Wait until 24h before",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1.1,
+            "position": [
+                2160,
+                0
+            ],
+            "webhookId": "leadpilot-booking-reminder-wait"
+        },
+        {
+            "parameters": {
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Prepare booking emails').first().json.workspaceId + '/bookings/' + $('Prepare booking emails').first().json.bookingId }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n06-get",
+            "name": "Check booking status",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2400,
+                0
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $json.status || '' }}",
+                            "rightValue": "confirmed",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n06-still",
+            "name": "Still confirmed?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                2640,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $('Prepare booking emails').first().json.from }}",
+                "toEmail": "={{ $('Prepare booking emails').first().json.to }}",
+                "subject": "={{ $('Prepare booking emails').first().json.reminderSubject }}",
+                "emailFormat": "text",
+                "text": "={{ $('Prepare booking emails').first().json.reminderText }}",
+                "options": {}
+            },
+            "id": "n06-send-rem",
+            "name": "Send reminder (SMTP)",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                2880,
+                -60
+            ],
+            "notes": "Select your SMTP credential on this node after importing.",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Prepare booking emails').first().json.workspaceId + '/executions/' + $('Prepare booking emails').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'failed', message: 'Booking workflow step failed: ' + String(($json.error && $json.error.message) || 'unknown error').slice(0, 400) }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n06-cb-fail",
+            "name": "Callback: failed",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2880,
+                200
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/executions/' + $json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: $json.notSentStatus, message: String($json.reason || 'Nothing was sent.').slice(0, 500) }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n06-cb-skip",
+            "name": "Callback: nothing sent",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1440,
+                340
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Validate and dedupe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate and dedupe": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare booking emails",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare booking emails": {
+            "main": [
+                [
+                    {
+                        "node": "Can send?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Can send?": {
+            "main": [
+                [
+                    {
+                        "node": "Send confirmation (SMTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Callback: nothing sent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send confirmation (SMTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: confirmation sent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Callback: failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Callback: confirmation sent": {
+            "main": [
+                [
+                    {
+                        "node": "Reminder due?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Reminder due?": {
+            "main": [
+                [
+                    {
+                        "node": "Wait until 24h before",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                []
+            ]
+        },
+        "Wait until 24h before": {
+            "main": [
+                [
+                    {
+                        "node": "Check booking status",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check booking status": {
+            "main": [
+                [
+                    {
+                        "node": "Still confirmed?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Callback: failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Still confirmed?": {
+            "main": [
+                [
+                    {
+                        "node": "Send reminder (SMTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                []
+            ]
+        },
+        "Send reminder (SMTP)": {
+            "main": [
+                [],
+                [
+                    {
+                        "node": "Callback: failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

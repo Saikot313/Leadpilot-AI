@@ -1,0 +1,513 @@
+{
+    "name": "LeadPilot 08 - Daily Summary Report",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 8 * * *"
+                        }
+                    ]
+                }
+            },
+            "id": "n08-schedule",
+            "name": "Every day 08:00",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                0,
+                440
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const ws = String($env.LEADPILOT_WORKSPACE_ID || ''); if (!/^[A-Za-z0-9_-]{1,128}$/.test(ws)) return []; return [{ json: { workspaceId: ws, executionId: '', data: {} } }];"
+            },
+            "id": "n08-sched-in",
+            "name": "Scheduled input",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                240,
+                440
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-daily-summary",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n08-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                160
+            ],
+            "webhookId": "leadpilot-daily-summary"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n08-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n08-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                80
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n08-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const ID = /^[A-Za-z0-9_-]{1,128}$/; const d = (b.data && typeof b.data === 'object') ? b.data : {}; const key = String(b.idempotencyKey || ''); if (!ID.test(String(b.workspaceId || '')) || !ID.test(String(b.executionId || ''))) return []; const sd = $getWorkflowStaticData('global'); sd.seen = sd.seen || {}; if (key && sd.seen[key]) return []; if (key) { sd.seen[key] = Date.now(); const ks = Object.keys(sd.seen); if (ks.length > 500) { ks.sort((x, y) => sd.seen[x] - sd.seen[y]).slice(0, ks.length - 500).forEach(k => delete sd.seen[k]); } } return [{ json: { workspaceId: b.workspaceId, executionId: b.executionId, mode: b.mode || 'live', data: d } }];"
+            },
+            "id": "n08-validate",
+            "name": "Validate and dedupe",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                80
+            ]
+        },
+        {
+            "parameters": {
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/daily-summary' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "id": "n08-fetch",
+            "name": "Fetch summary",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                960,
+                260
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "let ctx; try { ctx = $('Validate and dedupe').first().json; } catch (e) { ctx = $('Scheduled input').first().json; } const s = $input.first().json; const money = (s.estimatedCostUsd === null || s.estimatedCostUsd === undefined) ? 'n/a (no token data or prices configured)' : '$' + Number(s.estimatedCostUsd).toFixed(4) + ' (estimate, not billing)'; const text = ['LeadPilot daily summary for ' + s.date, '', 'New leads: ' + s.newLeads, 'Qualified (score 40+): ' + s.qualifiedLeads, 'High priority: ' + s.highPriorityLeads, 'Converted (updated today): ' + s.convertedLeads, 'Lost (updated today): ' + s.lostLeads, 'Pending approvals: ' + s.pendingApprovals, 'Bookings today: ' + s.bookingsToday, 'Failed workflow runs: ' + s.failedExecutions, 'AI requests: ' + s.aiRequests, 'AI cost estimate: ' + money].join('\\n'); const to = String($env.SUMMARY_TO_EMAIL || '').trim(); const from = String($env.OUTBOUND_FROM_EMAIL || '').trim(); return [{ json: { workspaceId: ctx.workspaceId, executionId: ctx.executionId || '', text, subject: 'LeadPilot daily summary ' + s.date, to, from, canEmail: !!(to && from) } }];"
+            },
+            "id": "n08-format",
+            "name": "Format summary",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1200,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $json.canEmail }}",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n08-can",
+            "name": "Recipient configured?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1440,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $json.from }}",
+                "toEmail": "={{ $json.to }}",
+                "subject": "={{ $json.subject }}",
+                "emailFormat": "text",
+                "text": "={{ $json.text }}",
+                "options": {}
+            },
+            "id": "n08-send",
+            "name": "Email summary (SMTP)",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1680,
+                180
+            ],
+            "notes": "Select your SMTP credential on this node after importing.",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ !!$('Format summary').first().json.executionId }}",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n08-has",
+            "name": "Started from backend?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1920,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Format summary').first().json.workspaceId + '/executions/' + $('Format summary').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'success', message: $('Format summary').first().json.canEmail ? 'Daily summary emailed.' : 'Summary generated. No email sent: SUMMARY_TO_EMAIL or OUTBOUND_FROM_EMAIL is not set.' }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n08-cb-ok",
+            "name": "Callback: success",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2160,
+                200
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        },
+        {
+            "parameters": {
+                "jsCode": "let ctx = {}; try { ctx = $('Validate and dedupe').first().json; } catch (e) { try { ctx = $('Scheduled input').first().json; } catch (e2) {} } const err = $input.first().json.error; return [{ json: { workspaceId: ctx.workspaceId || '', report: { workflow: 'daily_summary', message: String((err && err.message) || 'Daily summary failed.').slice(0, 1000), executionId: ctx.executionId || undefined, retryStatus: 'exhausted' } } }];"
+            },
+            "id": "n08-fail-ctx",
+            "name": "Failure context",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1200,
+                460
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/errors' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.report) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n08-report",
+            "name": "Report failure",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1440,
+                460
+            ],
+            "onError": "continueRegularOutput"
+        }
+    ],
+    "connections": {
+        "Every day 08:00": {
+            "main": [
+                [
+                    {
+                        "node": "Scheduled input",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Scheduled input": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Validate and dedupe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate and dedupe": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch summary": {
+            "main": [
+                [
+                    {
+                        "node": "Format summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Failure context",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format summary": {
+            "main": [
+                [
+                    {
+                        "node": "Recipient configured?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Recipient configured?": {
+            "main": [
+                [
+                    {
+                        "node": "Email summary (SMTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Started from backend?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Email summary (SMTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Started from backend?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Failure context",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Started from backend?": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                []
+            ]
+        },
+        "Failure context": {
+            "main": [
+                [
+                    {
+                        "node": "Report failure",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

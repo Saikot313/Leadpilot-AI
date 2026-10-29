@@ -1,0 +1,330 @@
+{
+    "name": "LeadPilot 07 - Error Notification and Retry",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-error-notification",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n07-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                160
+            ],
+            "webhookId": "leadpilot-error-notification"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n07-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n07-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                80
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n07-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                260
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const d = (b.data && typeof b.data === 'object') ? b.data : b; const ID = /^[A-Za-z0-9_-]{1,128}$/; const s = (v, n) => (typeof v === 'string' && v.trim()) ? v.trim().slice(0, n) : undefined; const ws = String(b.workspaceId || ''); const eid = String(b.executionId || d.executionId || ''); const lid = String(d.leadId || ''); const rs = ['will_retry', 'exhausted', 'not_retryable'].includes(d.retryStatus) ? d.retryStatus : 'not_retryable'; return [{ json: { workspaceId: ws, report: { workflow: s(d.workflow, 80) || 'unknown', message: s(d.message, 1000) || 'Workflow error reported.', node: s(d.node, 120), executionId: ID.test(eid) ? eid : undefined, leadId: ID.test(lid) ? lid : undefined, retryStatus: rs } } }];"
+            },
+            "id": "n07-norm-hook",
+            "name": "Normalize webhook report",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                80
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "n07-errtrig",
+            "name": "Error Trigger",
+            "type": "n8n-nodes-base.errorTrigger",
+            "typeVersion": 1,
+            "position": [
+                0,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const e = (j.execution && j.execution.error) || {}; const ws = String($env.LEADPILOT_WORKSPACE_ID || ''); return [{ json: { workspaceId: ws, report: { workflow: String((j.workflow && j.workflow.name) || 'unknown').slice(0, 80), message: String(e.message || 'Workflow execution failed.').slice(0, 1000), node: (j.execution && j.execution.lastNodeExecuted) ? String(j.execution.lastNodeExecuted).slice(0, 120) : undefined, retryStatus: 'exhausted' } } }];"
+            },
+            "id": "n07-norm-trig",
+            "name": "Normalize error trigger",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                240,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ /^[A-Za-z0-9_-]{1,128}$/.test($json.workspaceId || '') }}",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n07-ws",
+            "name": "Workspace known?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                960,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/errors' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.report) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n07-post",
+            "name": "Record error in backend",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1200,
+                160
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000,
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {},
+            "id": "n07-notify",
+            "name": "Notify team (CONFIGURE ME)",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1440,
+                160
+            ],
+            "notes": "Placeholder. Replace with a Slack or email node to be alerted. Until you do, failures are only recorded in the Error monitoring screen."
+        },
+        {
+            "parameters": {},
+            "id": "n07-skip",
+            "name": "Skipped: no workspace id",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                340
+            ],
+            "notes": "Set LEADPILOT_WORKSPACE_ID so errors caught by the Error Trigger can be recorded."
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize webhook report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize webhook report": {
+            "main": [
+                [
+                    {
+                        "node": "Workspace known?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Error Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize error trigger",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize error trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Workspace known?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Workspace known?": {
+            "main": [
+                [
+                    {
+                        "node": "Record error in backend",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Skipped: no workspace id",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Record error in backend": {
+            "main": [
+                [
+                    {
+                        "node": "Notify team (CONFIGURE ME)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

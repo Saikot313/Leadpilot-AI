@@ -1,0 +1,400 @@
+{
+    "name": "LeadPilot 03 - Lead Routing and Logging",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-lead-routing",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n03-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                240
+            ],
+            "webhookId": "leadpilot-lead-routing"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n03-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n03-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n03-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                360
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const ID = /^[A-Za-z0-9_-]{1,128}$/; const d = (b.data && typeof b.data === 'object') ? b.data : {}; const key = String(b.idempotencyKey || ''); if (!ID.test(String(b.workspaceId || '')) || !ID.test(String(b.executionId || ''))) return []; for (const f of ['leadId', 'approvalId', 'bookingId']) { if (d[f] !== undefined && d[f] !== null && !ID.test(String(d[f]))) return []; } const sd = $getWorkflowStaticData('global'); sd.seen = sd.seen || {}; if (key && sd.seen[key]) return []; if (key) { sd.seen[key] = Date.now(); const ks = Object.keys(sd.seen); if (ks.length > 500) { ks.sort((x, y) => sd.seen[x] - sd.seen[y]).slice(0, ks.length - 500).forEach(k => delete sd.seen[k]); } } return [{ json: { workspaceId: b.workspaceId, executionId: b.executionId, mode: b.mode || 'live', data: d } }];"
+            },
+            "id": "n03-validate",
+            "name": "Validate and dedupe",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const c = $input.first().json; const d = c.data || {}; let route = 'nurture'; if (d.needsHumanHandoff === true || d.priority === 'high') { route = 'urgent'; } else if (d.priority === 'medium') { route = 'normal'; } return [{ json: { ...c, route } }];"
+            },
+            "id": "n03-decide",
+            "name": "Decide route",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                960,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "rules": {
+                    "values": [
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict"
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "r1",
+                                        "leftValue": "={{ $json.route }}",
+                                        "rightValue": "urgent",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": true,
+                            "outputKey": "urgent"
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict"
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "r2",
+                                        "leftValue": "={{ $json.route }}",
+                                        "rightValue": "normal",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": true,
+                            "outputKey": "normal"
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": true,
+                                    "leftValue": "",
+                                    "typeValidation": "strict"
+                                },
+                                "conditions": [
+                                    {
+                                        "id": "r3",
+                                        "leftValue": "={{ $json.route }}",
+                                        "rightValue": "nurture",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ],
+                                "combinator": "and"
+                            },
+                            "renameOutput": true,
+                            "outputKey": "nurture"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "n03-switch",
+            "name": "Route",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3,
+            "position": [
+                1200,
+                160
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "n03-urgent",
+            "name": "Urgent - notify team (CONFIGURE ME)",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1440,
+                40
+            ],
+            "notes": "Placeholder. Replace with a Slack, email or other notification node. Until you do, no team notification is sent."
+        },
+        {
+            "parameters": {},
+            "id": "n03-normal",
+            "name": "Normal - standard queue",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1440,
+                160
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "n03-nurture",
+            "name": "Nurture - low touch",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1440,
+                280
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Decide route').first().json.workspaceId + '/executions/' + $('Decide route').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'success', message: 'Routed as ' + $('Decide route').first().json.route + ' for lead ' + $('Decide route').first().json.data.leadId + '. The team notification node is a placeholder until you configure it.' }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n03-cb-ok",
+            "name": "Callback: success",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1680,
+                160
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Validate and dedupe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate and dedupe": {
+            "main": [
+                [
+                    {
+                        "node": "Decide route",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Decide route": {
+            "main": [
+                [
+                    {
+                        "node": "Route",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Route": {
+            "main": [
+                [
+                    {
+                        "node": "Urgent - notify team (CONFIGURE ME)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Normal - standard queue",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Nurture - low touch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Urgent - notify team (CONFIGURE ME)": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normal - standard queue": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Nurture - low touch": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

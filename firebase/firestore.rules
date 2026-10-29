@@ -1,0 +1,153 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function memberPath(wid) {
+      return /databases/$(database)/documents/workspaces/$(wid)/members/$(request.auth.uid);
+    }
+
+    function isMember(wid) {
+      return signedIn()
+        && exists(memberPath(wid))
+        && get(memberPath(wid)).data.get('status', 'active') == 'active';
+    }
+
+    function roleOf(wid) {
+      return get(memberPath(wid)).data.role;
+    }
+
+    function hasRole(wid, roles) {
+      return isMember(wid) && roleOf(wid) in roles;
+    }
+
+    function writers() {
+      return ['owner', 'admin', 'agent'];
+    }
+
+    function managers() {
+      return ['owner', 'admin'];
+    }
+
+    // ---------- Users (own profile only) ----------
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(
+          ['uid', 'email', 'displayName', 'photoUrl', 'activeWorkspaceId', 'createdAt', 'updatedAt']);
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.keys().hasOnly(
+          ['uid', 'email', 'displayName', 'photoUrl', 'activeWorkspaceId', 'createdAt', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // ---------- Discover own workspaces (collection-group query on members) ----------
+    match /{path=**}/members/{memberId} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // ---------- Workspaces ----------
+    // Creation, membership, and role changes are backend-only (Admin SDK bypasses rules).
+    match /workspaces/{wid} {
+      allow read: if isMember(wid);
+      allow write: if false;
+
+      match /members/{uid} {
+        allow read: if isMember(wid);
+        allow write: if false;
+      }
+
+      // ----- Leads -----
+      match /leads/{leadId} {
+        allow read: if isMember(wid);
+
+        allow create: if hasRole(wid, writers())
+          && request.resource.data.workspaceId == wid
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status == 'new'
+          && !request.resource.data.keys().hasAny(['qualification', 'score', 'priority']);
+
+        // Status, AI output, and ownership fields can only change via the backend.
+        allow update: if hasRole(wid, writers())
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['status', 'qualification', 'score', 'priority',
+                     'workspaceId', 'createdBy', 'createdAt', 'eventId']);
+
+        allow delete: if hasRole(wid, managers());
+
+        match /statusHistory/{historyId} {
+          allow read: if isMember(wid);
+          allow write: if false;
+        }
+      }
+
+      // ----- Conversations and messages -----
+      match /conversations/{conversationId} {
+        allow read: if isMember(wid);
+        allow create, update: if hasRole(wid, writers())
+          && request.resource.data.workspaceId == wid;
+        allow delete: if false;
+
+        match /messages/{messageId} {
+          allow read: if isMember(wid);
+          allow create: if hasRole(wid, writers())
+            && request.resource.data.senderType == 'user'
+            && request.resource.data.senderId == request.auth.uid;
+          allow update, delete: if false;
+        }
+      }
+
+      // ----- Follow-up tasks -----
+      match /followups/{taskId} {
+        allow read: if isMember(wid);
+        allow create, update: if hasRole(wid, writers())
+          && request.resource.data.workspaceId == wid;
+        allow delete: if hasRole(wid, managers());
+      }
+
+      // ----- Backend-written, member-readable -----
+      match /bookings/{id} {
+        allow read: if isMember(wid);
+        allow write: if false;
+      }
+      match /executions/{id} {
+        allow read: if isMember(wid);
+        allow write: if false;
+      }
+      match /approvals/{id} {
+        allow read: if isMember(wid);
+        allow write: if false;
+      }
+
+      // ----- Backend-written, owner/admin-readable -----
+      match /usage/{id} {
+        allow read: if hasRole(wid, managers());
+        allow write: if false;
+      }
+      match /activity/{id} {
+        allow read: if hasRole(wid, managers());
+        allow write: if false;
+      }
+      match /integrations/{id} {
+        // Non-secret settings only. Credentials live in backend/n8n env vars.
+        allow read: if hasRole(wid, managers());
+        allow write: if false;
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,377 @@
+{
+    "name": "LeadPilot 05 - Approved Outbound Actions",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leadpilot-outbound-action",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "n05-webhook",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                0,
+                240
+            ],
+            "webhookId": "leadpilot-outbound-action"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty",
+                                "singleValue": true
+                            }
+                        },
+                        {
+                            "id": "c2",
+                            "leftValue": "={{ $json.headers['x-leadpilot-secret'] || '' }}",
+                            "rightValue": "={{ $env.N8N_SHARED_SECRET || '' }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n05-auth",
+            "name": "Secret valid?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                240,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'accepted' }) }}",
+                "options": {
+                    "responseCode": 202
+                }
+            },
+            "id": "n05-202",
+            "name": "Respond 202",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ message: 'unauthorized' }) }}",
+                "options": {
+                    "responseCode": 401
+                }
+            },
+            "id": "n05-401",
+            "name": "Respond 401",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                480,
+                360
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const j = $input.first().json; const b = j.body || {}; const ID = /^[A-Za-z0-9_-]{1,128}$/; const d = (b.data && typeof b.data === 'object') ? b.data : {}; const key = String(b.idempotencyKey || ''); if (!ID.test(String(b.workspaceId || '')) || !ID.test(String(b.executionId || ''))) return []; for (const f of ['leadId', 'approvalId', 'bookingId']) { if (d[f] !== undefined && d[f] !== null && !ID.test(String(d[f]))) return []; } const sd = $getWorkflowStaticData('global'); sd.seen = sd.seen || {}; if (key && sd.seen[key]) return []; if (key) { sd.seen[key] = Date.now(); const ks = Object.keys(sd.seen); if (ks.length > 500) { ks.sort((x, y) => sd.seen[x] - sd.seen[y]).slice(0, ks.length - 500).forEach(k => delete sd.seen[k]); } } return [{ json: { workspaceId: b.workspaceId, executionId: b.executionId, mode: b.mode || 'live', data: d } }];"
+            },
+            "id": "n05-validate",
+            "name": "Validate and dedupe",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const c = $input.first().json; const d = c.data || {}; const EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+([.][A-Za-z0-9-]+)*[.][A-Za-z]{2,}$/; const from = String($env.OUTBOUND_FROM_EMAIL || '').trim(); const to = String(d.to || '').trim(); const subject = String(d.subject || '').replace(/[\\r\\n]+/g, ' ').trim().slice(0, 200); const body = String(d.body || '').trim().slice(0, 5000); let canSend = true; let reason = ''; if (d.channel !== 'email') { canSend = false; reason = 'Unsupported channel: only email is implemented. Nothing was sent.'; } else if (!EMAIL.test(to)) { canSend = false; reason = 'The recipient address is not valid. Nothing was sent.'; } else if (!subject || !body) { canSend = false; reason = 'The subject or body is empty. Nothing was sent.'; } else if (!from) { canSend = false; reason = 'OUTBOUND_FROM_EMAIL is not set in n8n. Nothing was sent.'; } return [{ json: { workspaceId: c.workspaceId, executionId: c.executionId, approvalId: d.approvalId, canSend, reason, from, to, subject, text: body } }];"
+            },
+            "id": "n05-prepare",
+            "name": "Prepare outbound email",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                960,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "c1",
+                            "leftValue": "={{ $json.canSend }}",
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true",
+                                "singleValue": true
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "n05-can",
+            "name": "Safe to send?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1200,
+                160
+            ]
+        },
+        {
+            "parameters": {
+                "fromEmail": "={{ $json.from }}",
+                "toEmail": "={{ $json.to }}",
+                "subject": "={{ $json.subject }}",
+                "emailFormat": "text",
+                "text": "={{ $json.text }}",
+                "options": {}
+            },
+            "id": "n05-send",
+            "name": "Send email (SMTP)",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1440,
+                80
+            ],
+            "notes": "Select your SMTP credential on this node after importing.",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 3000,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Prepare outbound email').first().json.workspaceId + '/executions/' + $('Prepare outbound email').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'success', message: 'Email handed to the SMTP server for approval ' + $('Prepare outbound email').first().json.approvalId + '. SMTP acceptance is not proof of delivery.' }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n05-cb-ok",
+            "name": "Callback: success",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1680,
+                20
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $('Prepare outbound email').first().json.workspaceId + '/executions/' + $('Prepare outbound email').first().json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'failed', message: String(($json.error && $json.error.message) || 'Sending the email failed.').slice(0, 500) }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n05-cb-fail",
+            "name": "Callback: send failed",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1680,
+                160
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.BACKEND_URL + '/api/v1/internal/workspaces/' + $json.workspaceId + '/executions/' + $json.executionId + '/callback' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-LeadPilot-Callback-Secret",
+                            "value": "={{ $env.BACKEND_CALLBACK_SECRET }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ status: 'failed', message: String($json.reason || 'Blocked before sending.').slice(0, 500) }) }}",
+                "options": {
+                    "timeout": 15000
+                }
+            },
+            "id": "n05-cb-block",
+            "name": "Callback: blocked",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1440,
+                300
+            ],
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 2000
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Secret valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Secret valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Respond 202",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond 401",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond 202": {
+            "main": [
+                [
+                    {
+                        "node": "Validate and dedupe",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate and dedupe": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare outbound email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare outbound email": {
+            "main": [
+                [
+                    {
+                        "node": "Safe to send?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Safe to send?": {
+            "main": [
+                [
+                    {
+                        "node": "Send email (SMTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Callback: blocked",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send email (SMTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Callback: success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Callback: send failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    }
+}
