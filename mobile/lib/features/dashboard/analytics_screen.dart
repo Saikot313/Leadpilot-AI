@@ -313,7 +313,7 @@ class _StageChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stages = LeadStatus.values;
+    const stages = LeadStatus.values;
     final counts = [
       for (final s in stages) leads.where((l) => l.status == s).length
     ];
@@ -492,8 +492,9 @@ class _ScoreChart extends StatelessWidget {
               reservedSize: 26,
               getTitlesWidget: (v, m) {
                 final i = v.toInt();
-                if (i < 0 || i >= buckets.length)
+                if (i < 0 || i >= buckets.length) {
                   return const SizedBox.shrink();
+                }
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(buckets[i].$1, style: _axisStyle(context)),

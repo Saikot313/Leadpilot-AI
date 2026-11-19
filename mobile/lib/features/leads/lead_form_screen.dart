@@ -326,7 +326,7 @@ class _LeadFormState extends ConsumerState<_LeadForm> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<LeadSource>(
-                    value: _source,
+                    initialValue: _source,
                     isExpanded: true,
                     decoration: const InputDecoration(
                         labelText: 'Source',
@@ -432,7 +432,7 @@ class _LeadFormState extends ConsumerState<_LeadForm> {
                               const SizedBox(height: 4),
                               SwitchListTile(
                                 contentPadding: EdgeInsets.zero,
-                                activeColor: AppColors.primary,
+                                activeThumbColor: AppColors.primary,
                                 title: const Text('Qualify with AI now'),
                                 subtitle: const Text(
                                     'Adds a score, explanation and a follow-up draft for approval.'),

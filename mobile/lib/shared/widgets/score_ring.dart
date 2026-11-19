@@ -75,8 +75,9 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..color = color;
     canvas.drawArc(rect, 0, math.pi * 2, false, track);
-    if (progress > 0)
+    if (progress > 0) {
       canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * progress, false, arc);
+    }
   }
 
   @override

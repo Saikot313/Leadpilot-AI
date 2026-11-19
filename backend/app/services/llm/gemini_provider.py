@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import time
+import logging
+
 
 from app.services.llm.base import LLMCallError, LLMProvider, LLMResponse, post_json
 
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
+logger = logging.getLogger(__name__)
 
 class GeminiProvider(LLMProvider):
     name = "gemini"
@@ -22,9 +25,9 @@ class GeminiProvider(LLMProvider):
             "contents": [{"role": "user", "parts": [{"text": user}]}],
             "generationConfig": {
                 "temperature": temperature,
-                "maxOutputTokens": max_output_tokens,
+                "maxOutputTokens": 4096,
                 "responseMimeType": "application/json",
-            },
+},
         }
         started = time.perf_counter()
         data = post_json(
@@ -36,6 +39,15 @@ class GeminiProvider(LLMProvider):
         latency_ms = int((time.perf_counter() - started) * 1000)
 
         candidates = data.get("candidates") or []
+
+        finish_reason = candidates[0].get("finishReason")
+
+        if finish_reason != "STOP":
+            logger.warning(
+                "gemini_unexpected_finish_reason",
+                extra={"finish_reason": finish_reason},
+        )
+
         if not candidates:
             raise LLMCallError("Gemini returned no candidates (possibly blocked).", code="blocked", retryable=False)
         parts = (candidates[0].get("content") or {}).get("parts") or []

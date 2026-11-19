@@ -35,19 +35,83 @@ abstract final class AppShadows {
 }
 
 abstract final class AppTheme {
-  static ThemeData light() {
+
+static ThemeData light() {
     const primary = Color(0xFF2563EB);
+    const background = Color(0xFFF8FAFC);
+    const surface = Colors.white;
+    const textPrimary = Color(0xFF0B1F3A);
+    const textSecondary = Color(0xFF5B6B80);
+    const border = Color(0xFFE4E9F0);
+
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.light,
+    ).copyWith(
+      primary: primary,
+      surface: surface,
+      onSurface: textPrimary,
+    );
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        brightness: Brightness.light,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: background,
+      canvasColor: background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: background,
+        foregroundColor: textPrimary,
+        elevation: 0,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: const BorderSide(color: border),
+        ),
+      ),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(color: textPrimary),
+        displayMedium: TextStyle(color: textPrimary),
+        displaySmall: TextStyle(color: textPrimary),
+        headlineLarge: TextStyle(color: textPrimary),
+        headlineMedium: TextStyle(color: textPrimary),
+        headlineSmall: TextStyle(color: textPrimary),
+        titleLarge: TextStyle(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        titleMedium: TextStyle(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        titleSmall: TextStyle(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        bodyLarge: TextStyle(color: textPrimary),
+        bodyMedium: TextStyle(color: textPrimary),
+        bodySmall: TextStyle(color: textSecondary),
+        labelLarge: TextStyle(color: textPrimary),
+        labelMedium: TextStyle(color: textSecondary),
+        labelSmall: TextStyle(color: textSecondary),
+      ),
+      iconTheme: const IconThemeData(color: textSecondary),
+      dividerTheme: const DividerThemeData(
+        color: border,
+        thickness: 1,
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        hintStyle: TextStyle(color: textSecondary),
+        labelStyle: TextStyle(color: textSecondary),
+      ),
     );
   }
+
 
   static ThemeData dark() {
     const primary = Color(0xFF60A5FA);

@@ -41,8 +41,9 @@ class _LeadFilterBarState extends ConsumerState<LeadFilterBar> {
   LeadFilterNotifier _commit() {
     _debounce?.cancel();
     final notifier = ref.read(leadFilterProvider.notifier);
-    if (ref.read(leadFilterProvider).search != _search.text)
+    if (ref.read(leadFilterProvider).search != _search.text) {
       notifier.setSearch(_search.text);
+    }
     return notifier;
   }
 

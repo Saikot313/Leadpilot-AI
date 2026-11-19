@@ -226,8 +226,9 @@ class QualificationResultCard extends StatelessWidget {
                         onPressed: () async {
                           await Clipboard.setData(
                               ClipboardData(text: r.suggestedFollowupMessage));
-                          if (context.mounted)
+                          if (context.mounted) {
                             AppSnack.success(context, 'Draft copied.');
+                          }
                         },
                       ),
                     ),

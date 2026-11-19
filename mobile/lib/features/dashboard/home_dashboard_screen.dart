@@ -575,4 +575,4 @@ class _MiniStat extends StatelessWidget {
 
 // Keep `math` referenced for future chart helpers without an unused-import warning.
 // ignore: unused_element
-final double _unused = math.pi;
+const double _unused = math.pi;

@@ -86,8 +86,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   String _destinationAfterLogin() {
     final from = GoRouterState.of(context).uri.queryParameters['from'];
-    if (from == null || !from.startsWith('/') || from.startsWith('//'))
+    if (from == null || !from.startsWith('/') || from.startsWith('//')) {
       return Routes.dashboard;
+    }
     final path = Uri.tryParse(from)?.path ?? '';
     const excluded = {
       Routes.splash,

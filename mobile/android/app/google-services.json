@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "89464662195",
+    "project_id": "leadpilot-ai-d561d",
+    "storage_bucket": "leadpilot-ai-d561d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:89464662195:android:f306cd86b20bee788528c6",
+        "android_client_info": {
+          "package_name": "com.example.leadpilot_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDefiecGjN_LqPQYb2UOKQqQ2wfsfuFHI8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

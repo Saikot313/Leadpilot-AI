@@ -1,4 +1,3 @@
-"""Approval schemas."""
 from datetime import datetime
 from typing import Any, Literal
 
@@ -31,3 +30,8 @@ class ApprovalDecision(RequestModel):
     note: str | None = Field(default=None, max_length=500)
     edited_subject: str | None = Field(default=None, min_length=1, max_length=200)
     edited_body: str | None = Field(default=None, min_length=1, max_length=5000)
+
+
+class ApprovalDraftUpdate(RequestModel):
+    subject: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1, max_length=5000)

@@ -214,7 +214,7 @@ class _AgentPlaygroundScreenState extends ConsumerState<AgentPlaygroundScreen> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<LeadSource?>(
-              value: _source,
+              initialValue: _source,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Source',

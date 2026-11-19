@@ -19,8 +19,22 @@ class ApprovalRepository {
 
   Future<ApprovalRequest> get(String id) async =>
       ApprovalRequest.fromJson(Json.map(await _api.get('$_base/$id')));
+  Future<ApprovalRequest> updateDraft(
+    String id, {
+    required String subject,
+    required String body,
+  }) async {
+    final res = await _api.patch(
+      '$_base/$id/draft',
+      body: {
+        'subject': subject,
+        'body': body,
+      },
+    );
 
-  /// Approving a follow-up runs the n8n outbound workflow on the server. Rejecting sends nothing.
+    return ApprovalRequest.fromJson(Json.map(res));
+  }
+
   Future<ApprovalRequest> decide(
     String id, {
     required bool approve,

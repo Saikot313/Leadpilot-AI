@@ -7,8 +7,9 @@ abstract final class Validators {
   static String? email(String? v) {
     final value = v?.trim() ?? '';
     if (value.isEmpty) return 'Email is required';
-    if (value.length > 254 || !_email.hasMatch(value))
+    if (value.length > 254 || !_email.hasMatch(value)) {
       return 'Enter a valid email address';
+    }
     return null;
   }
 
@@ -28,8 +29,9 @@ abstract final class Validators {
     final value = v?.trim() ?? '';
     if (value.isEmpty) return null;
     if (value.length > 32) return 'Phone number is too long';
-    if (!RegExp(r'^[+\d][\d\s\-()]{5,}$').hasMatch(value))
+    if (!RegExp(r'^[+\d][\d\s\-()]{5,}$').hasMatch(value)) {
       return 'Enter a valid phone number';
+    }
     return null;
   }
 

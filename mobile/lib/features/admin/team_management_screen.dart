@@ -347,7 +347,7 @@ class _AddMemberSheetState extends ConsumerState<_AddMemberSheet> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<Role>(
-            value: _role,
+            initialValue: _role,
             isExpanded: true,
             decoration: const InputDecoration(
                 labelText: 'Role',

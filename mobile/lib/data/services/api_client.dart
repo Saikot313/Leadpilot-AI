@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-
 import '../../core/config/app_config.dart';
 
 /// Errors that are safe to show to the user as-is.
@@ -117,12 +116,12 @@ class ApiClient {
         code: 'auth',
       );
     }
-
     final request = http.Request(method, _uri(path, query))
       ..headers['Accept'] = 'application/json'
       ..headers.addAll(headers ?? const {});
-    if (token != null && token.isNotEmpty)
+    if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
+    }
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
@@ -133,7 +132,7 @@ class ApiClient {
       response = await http.Response.fromStream(await _http.send(request))
           .timeout(limit);
     } on TimeoutException {
-      throw ApiException(
+      throw const ApiException(
         message: 'The server took too long to respond. Please try again.',
         code: 'timeout',
       );
@@ -197,8 +196,9 @@ class ApiClient {
     if (status == 404) return 'That item could not be found.';
     if (status == 413) return 'The request was too large.';
     if (status == 429) return 'Too many requests. Please wait a moment.';
-    if (status >= 500)
+    if (status >= 500) {
       return 'The server had a problem. Please try again shortly.';
+    }
     return 'The request could not be completed.';
   }
 }

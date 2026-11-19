@@ -57,19 +57,29 @@ class _ApprovalCenterScreenState extends ConsumerState<ApprovalCenterScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: SegmentedButton<bool>(
                 showSelectedIcon: false,
                 segments: [
                   ButtonSegment(
-                      value: true, label: Text('Pending ($pendingCount)')),
-                  const ButtonSegment(value: false, label: Text('History')),
+                    value: true,
+                    label: Text('Pending ($pendingCount)'),
+                  ),
+                  const ButtonSegment(
+                    value: false,
+                    label: Text('History'),
+                  ),
                 ],
                 selected: {_pendingOnly},
-                onSelectionChanged: (s) =>
-                    setState(() => _pendingOnly = s.first),
+                onSelectionChanged: (s) {
+                  setState(() => _pendingOnly = s.first);
+                },
                 style: SegmentedButton.styleFrom(
                   selectedBackgroundColor: AppColors.primarySoft,
                   selectedForegroundColor: AppColors.navy,
@@ -85,6 +95,7 @@ class _ApprovalCenterScreenState extends ConsumerState<ApprovalCenterScreen> {
               data: (all) {
                 final list =
                     all.where((a) => a.isPending == _pendingOnly).toList();
+
                 return RefreshIndicator(
                   onRefresh: () async {
                     invalidateAllData(ref.invalidate);
@@ -115,14 +126,20 @@ class _ApprovalCenterScreenState extends ConsumerState<ApprovalCenterScreen> {
                       : ListView.separated(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 96),
+                            AppSpacing.lg,
+                            AppSpacing.sm,
+                            AppSpacing.lg,
+                            96,
+                          ),
                           itemCount: list.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: AppSpacing.md),
                           itemBuilder: (context, i) => StaggeredEntrance(
                             key: ValueKey(list[i].id),
                             index: i,
-                            child: _ApprovalCard(approval: list[i]),
+                            child: _ApprovalCard(
+                              approval: list[i],
+                            ),
                           ),
                         ),
                 );
@@ -151,12 +168,18 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     switch (res.status) {
       case ApprovalStatus.executed:
         AppSnack.success(
-            context, res.resultMessage ?? 'Approved and executed.');
+          context,
+          res.resultMessage ?? 'Approved and executed.',
+        );
       case ApprovalStatus.approved:
         AppSnack.info(context, res.resultMessage ?? 'Approved.');
       case ApprovalStatus.failed:
-        AppSnack.error(context,
-            ApiException(message: res.resultMessage ?? 'The action failed.'));
+        AppSnack.error(
+          context,
+          ApiException(
+            message: res.resultMessage ?? 'The action failed.',
+          ),
+        );
       case ApprovalStatus.rejected:
         AppSnack.info(context, 'Rejected. Nothing was sent.');
       default:
@@ -164,12 +187,14 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     }
   }
 
-  Future<void> _decide(
-      {required bool approve,
-      String? note,
-      String? subject,
-      String? body}) async {
+  Future<void> _decide({
+    required bool approve,
+    String? note,
+    String? subject,
+    String? body,
+  }) async {
     setState(() => _busy = true);
+
     try {
       final res = await ref.read(approvalRepositoryProvider).decide(
             widget.approval.id,
@@ -178,26 +203,35 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             editedSubject: subject,
             editedBody: body,
           );
+
       if (!mounted) return;
+
       _report(res);
       invalidateAllData(ref.invalidate);
     } catch (e) {
       if (mounted) {
         AppSnack.error(context, e);
-        invalidateAllData(ref.invalidate); // e.g. already decided elsewhere
+        invalidateAllData(ref.invalidate);
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
-  Future<void> _approve({String? subject, String? body}) async {
+  Future<void> _approve({
+    String? subject,
+    String? body,
+  }) async {
     final a = widget.approval;
     final external = a.actionType == ApprovalAction.sendFollowup;
     final flagged = a.safetyFlags.isNotEmpty;
+
     final target =
         LeadStatus.tryFromWire(Json.str(a.payload['status']))?.label ??
             'the new status';
+
     final ok = await showConfirmDialog(
       context,
       title: external ? 'Approve and send?' : 'Approve this change?',
@@ -207,23 +241,61 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
           : 'The lead will be moved to $target.',
       confirmLabel: external ? 'Approve and send' : 'Approve',
     );
+
     if (!ok || !mounted) return;
-    await _decide(approve: true, subject: subject, body: body);
+
+    await _decide(
+      approve: true,
+      subject: subject,
+      body: body,
+    );
   }
 
-  Future<void> _edit() async {
+
+Future<void> _edit() async {
     final a = widget.approval;
+
     final edited = await showAppBottomSheet<({String subject, String body})>(
       context,
       title: 'Edit draft',
-      builder: (_) => _EditDraftSheet(subject: a.subject, body: a.body),
+      builder: (_) => _EditDraftSheet(
+        subject: a.subject,
+        body: a.body,
+      ),
     );
+
     if (edited == null || !mounted) return;
-    await _approve(
-      subject: edited.subject != a.subject ? edited.subject : null,
-      body: edited.body != a.body ? edited.body : null,
-    );
+
+    if (edited.subject == a.subject && edited.body == a.body) {
+      AppSnack.info(context, 'No changes to save.');
+      return;
+    }
+
+    setState(() => _busy = true);
+
+    try {
+      await ref.read(approvalRepositoryProvider).updateDraft(
+            a.id,
+            subject: edited.subject,
+            body: edited.body,
+          );
+
+      if (!mounted) return;
+
+      AppSnack.success(context, 'Draft saved successfully.');
+
+      invalidateAllData(ref.invalidate);
+    } catch (e) {
+      if (mounted) {
+        AppSnack.error(context, e);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
   }
+
 
   Future<void> _reject() async {
     final note = await showAppBottomSheet<String>(
@@ -231,8 +303,13 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
       title: 'Reject this item?',
       builder: (_) => const _RejectSheet(),
     );
+
     if (note == null || !mounted) return;
-    await _decide(approve: false, note: note.isEmpty ? null : note);
+
+    await _decide(
+      approve: false,
+      note: note.isEmpty ? null : note,
+    );
   }
 
   @override
@@ -253,8 +330,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(10)),
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: Icon(
                   isFollowup
                       ? Icons.mark_email_unread_outlined
@@ -268,11 +346,18 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(a.title, style: text.titleSmall),
                     Text(
-                      'Requested by ${a.requestedBy == 'ai' ? 'AI' : a.requestedBy} \u00B7 ${Fmt.relative(a.createdAt)}',
-                      style:
-                          text.labelSmall?.copyWith(color: AppColors.textMuted),
+                      a.title,
+                      style: text.titleSmall?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Requested by ${a.requestedBy == 'ai' ? 'AI' : a.requestedBy} · ${Fmt.relative(a.createdAt)}',
+                      style: text.labelSmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -283,9 +368,12 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
           ),
           if (a.description != null && a.description!.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(a.description!,
-                style:
-                    text.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            Text(
+              a.description!,
+              style: text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
           const SizedBox(height: AppSpacing.md),
           if (isFollowup) _followupBody(text, a) else _statusBody(text, a),
@@ -296,25 +384,39 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               decoration: BoxDecoration(
                 color: AppColors.soft(AppColors.warning, 30),
                 borderRadius: AppRadius.control,
-                border:
-                    Border.all(color: AppColors.soft(AppColors.warning, 90)),
+                border: Border.all(
+                  color: AppColors.soft(AppColors.warning, 90),
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.shield_outlined, size: 18),
+                  const Icon(
+                    Icons.shield_outlined,
+                    size: 18,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Review before approving', style: text.titleSmall),
+                        Text(
+                          'Review before approving',
+                          style: text.titleSmall?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
-                            a.safetyFlags
-                                .map(QualificationResult.safetyFlagLabel)
-                                .join('\n'),
-                            style: text.bodySmall),
+                          a.safetyFlags
+                              .map(
+                                QualificationResult.safetyFlagLabel,
+                              )
+                              .join('\n'),
+                          style: text.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -332,7 +434,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               if (a.leadId != null)
                 TextButton.icon(
                   onPressed: () => context.push(Routes.lead(a.leadId!)),
-                  icon: const Icon(Icons.person_outline_rounded, size: 18),
+                  icon: const Icon(
+                    Icons.person_outline_rounded,
+                    size: 18,
+                  ),
                   label: const Text('View lead'),
                 ),
               if (a.isPending && canWrite) ...[
@@ -356,7 +461,7 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                   icon: Icons.check_rounded,
                   compact: true,
                   loading: _busy,
-                  onPressed: _approve,
+                  onPressed: _busy ? null : _approve,
                 ),
               ],
             ],
@@ -366,7 +471,9 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 'You have view-only access and cannot decide approvals.',
-                style: text.bodySmall?.copyWith(color: AppColors.textMuted),
+                style: text.bodySmall?.copyWith(
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
         ],
@@ -374,12 +481,23 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
     );
   }
 
-  Widget _followupBody(TextTheme text, ApprovalRequest a) {
+  Widget _followupBody(
+    TextTheme text,
+    ApprovalRequest a,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _kv(text, 'To', a.recipient ?? Fmt.empty),
-        _kv(text, 'Subject', a.subject.isEmpty ? Fmt.empty : a.subject),
+        _kv(
+          text,
+          'To',
+          a.recipient ?? Fmt.empty,
+        ),
+        _kv(
+          text,
+          'Subject',
+          a.subject.isEmpty ? Fmt.empty : a.subject,
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -388,64 +506,105 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
             borderRadius: AppRadius.control,
             border: Border.all(color: AppColors.border),
           ),
-          child: SelectableText(a.body.isEmpty ? 'No message body.' : a.body,
-              style: text.bodyMedium),
+          child: SelectableText(
+            a.body.isEmpty ? 'No message body.' : a.body,
+            style: text.bodyMedium?.copyWith(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _statusBody(TextTheme text, ApprovalRequest a) {
+  Widget _statusBody(
+    TextTheme text,
+    ApprovalRequest a,
+  ) {
     final target = LeadStatus.tryFromWire(Json.str(a.payload['status']));
     final reason = Json.str(a.payload['reason']);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _kv(
-            text,
-            'Change',
-            target == null
-                ? 'Update lead status'
-                : 'Move lead to ${target.label}'),
+          text,
+          'Change',
+          target == null
+              ? 'Update lead status'
+              : 'Move lead to ${target.label}',
+        ),
         if (reason != null && reason.isNotEmpty) _kv(text, 'Reason', reason),
       ],
     );
   }
 
-  Widget _kv(TextTheme text, String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-                width: 64,
-                child: Text(k,
-                    style: text.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary))),
-            Expanded(child: Text(v, style: text.bodyMedium)),
-          ],
-        ),
-      );
+  Widget _kv(
+    TextTheme text,
+    String k,
+    String v,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(
+              k,
+              style: text.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              v,
+              style: text.bodyMedium?.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  List<Widget> _decisionInfo(TextTheme text, ApprovalRequest a, String? uid) {
+  List<Widget> _decisionInfo(
+    TextTheme text,
+    ApprovalRequest a,
+    String? uid,
+  ) {
     final who = a.decidedBy == null
         ? null
         : (a.decidedBy == uid ? 'you' : 'a team member');
+
     final good = a.status == ApprovalStatus.executed;
     final bad = a.status == ApprovalStatus.failed;
+
     return [
       const SizedBox(height: AppSpacing.md),
       const Divider(),
       const SizedBox(height: 8),
       if (who != null)
         Text(
-          'Decided by $who \u00B7 ${Fmt.dateTime(a.decidedAt)}',
-          style: text.labelSmall?.copyWith(color: AppColors.textSecondary),
+          'Decided by $who · ${Fmt.dateTime(a.decidedAt)}',
+          style: text.labelSmall?.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
       if (a.decisionNote != null && a.decisionNote!.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('Note: ${a.decisionNote}', style: text.bodySmall),
+          child: Text(
+            'Note: ${a.decisionNote}',
+            style: text.bodySmall?.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
         ),
       if (a.resultMessage != null && a.resultMessage!.isNotEmpty)
         Padding(
@@ -465,7 +624,14 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
                     : (bad ? AppColors.danger : AppColors.textSecondary),
               ),
               const SizedBox(width: 8),
-              Expanded(child: Text(a.resultMessage!, style: text.bodySmall)),
+              Expanded(
+                child: Text(
+                  a.resultMessage!,
+                  style: text.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -474,7 +640,10 @@ class _ApprovalCardState extends ConsumerState<_ApprovalCard> {
 }
 
 class _EditDraftSheet extends StatefulWidget {
-  const _EditDraftSheet({required this.subject, required this.body});
+  const _EditDraftSheet({
+    required this.subject,
+    required this.body,
+  });
 
   final String subject;
   final String body;
@@ -485,8 +654,10 @@ class _EditDraftSheet extends StatefulWidget {
 
 class _EditDraftSheetState extends State<_EditDraftSheet> {
   final _form = GlobalKey<FormState>();
+
   late final TextEditingController _subject =
       TextEditingController(text: widget.subject);
+
   late final TextEditingController _body =
       TextEditingController(text: widget.body);
 
@@ -499,8 +670,11 @@ class _EditDraftSheetState extends State<_EditDraftSheet> {
 
   void _submit() {
     if (!(_form.currentState?.validate() ?? false)) return;
-    Navigator.of(context)
-        .pop((subject: _subject.text.trim(), body: _body.text.trim()));
+
+    Navigator.of(context).pop((
+      subject: _subject.text.trim(),
+      body: _body.text.trim(),
+    ));
   }
 
   @override
@@ -535,17 +709,17 @@ class _EditDraftSheetState extends State<_EditDraftSheet> {
           const SizedBox(height: 4),
           Text(
             'You are responsible for the final wording. Avoid links, prices and promises unless you intend them.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
           ),
           const SizedBox(height: 16),
           AppButton(
-              label: 'Continue to approve',
-              icon: Icons.check_rounded,
-              expand: true,
-              onPressed: _submit),
+            label: 'Save Draft',
+            icon: Icons.save_outlined,
+            expand: true,
+            onPressed: _submit,
+          ),
         ],
       ),
     );
@@ -575,18 +749,18 @@ class _RejectSheetState extends State<_RejectSheet> {
       children: [
         Text(
           'Nothing will be sent or changed. The decision is recorded in the audit log.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: AppColors.textSecondary),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondary,
+              ),
         ),
         const SizedBox(height: 12),
         AppTextField(
-            controller: _note,
-            label: 'Reason (optional)',
-            maxLength: 500,
-            minLines: 2,
-            maxLines: 4),
+          controller: _note,
+          label: 'Reason (optional)',
+          maxLength: 500,
+          minLines: 2,
+          maxLines: 4,
+        ),
         const SizedBox(height: 12),
         AppButton(
           label: 'Reject',

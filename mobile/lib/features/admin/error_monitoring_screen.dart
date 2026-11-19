@@ -120,9 +120,9 @@ class _ErrorMonitoringScreenState extends ConsumerState<ErrorMonitoringScreen> {
             onRetry: () => ref.invalidate(errorLogsProvider(_hours)),
             loading: const SkeletonList(count: 3, shrinkWrap: true),
             isEmpty: (l) => l.isEmpty,
-            empty: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-              child: EmptyView(
+            empty: const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              child: const EmptyView(
                 icon: Icons.verified_outlined,
                 title: 'No errors in this period',
                 message:

@@ -75,16 +75,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
     await _run(() async {
       await ref.read(authRepositoryProvider).sendPasswordReset(_email.text);
-      if (mounted)
+      if (mounted) {
         AppSnack.success(
             context, 'If that account exists, a reset link is on its way.');
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final demo = AppConfig.demoMode;
+    const demo = AppConfig.demoMode;
 
     return Scaffold(
       backgroundColor: AppColors.background,

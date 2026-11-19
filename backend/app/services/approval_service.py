@@ -109,6 +109,66 @@ def get_approval(store: DocumentStore, workspace_id: str, approval_id: str) -> A
     return _to_out(doc, workspace_id)
 
 
+def update_draft(
+    store: DocumentStore,
+    *,
+    workspace_id: str,
+    approval_id: str,
+    user_id: str,
+    subject: str,
+    body: str,
+) -> ApprovalOut:
+    path = _path(workspace_id, approval_id)
+
+    doc = store.get(path)
+    if not doc:
+        raise NotFoundError("Approval not found.")
+
+    if doc.get("status") != ApprovalStatus.PENDING:
+        raise ConflictError(
+            "Only pending approvals can be edited.",
+            code="already_decided",
+        )
+
+    action = ApprovalAction(doc["actionType"])
+    if action != ApprovalAction.SEND_FOLLOWUP:
+        raise ValidationFailedError(
+            "Only follow-up drafts can be edited."
+        )
+
+    if not subject.strip() or not body.strip():
+        raise ValidationFailedError(
+            "Subject and message cannot be empty."
+        )
+
+    payload = dict(doc.get("payload") or {})
+    payload["subject"] = subject.strip()
+    payload["body"] = body.strip()
+
+    if not store.compare_and_update(
+        path,
+        {"status": ApprovalStatus.PENDING},
+        {"payload": payload},
+    ):
+        raise ConflictError(
+            "This approval has already been decided.",
+            code="already_decided",
+        )
+
+    log_activity(
+        store,
+        workspace_id,
+        actor_type=ActorType.USER,
+        actor_id=user_id,
+        action="approval.draft_updated",
+        entity_type="approval",
+        entity_id=approval_id,
+        summary=str(doc.get("title", "")),
+    )
+
+    return get_approval(store, workspace_id, approval_id)
+
+
 def list_approvals(
     store: DocumentStore, workspace_id: str, status: ApprovalStatus | None = None, limit: int = 100
 ) -> list[ApprovalOut]:

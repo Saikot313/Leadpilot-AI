@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../core/config/app_config.dart';
 import '../../core/router/route_names.dart';
 import '../../core/theme/app_colors.dart';
@@ -174,7 +173,7 @@ class _WorkspaceCardState extends ConsumerState<_WorkspaceCard> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(
-              value: _industry,
+              initialValue: _industry,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Industry'),
               items: [
@@ -189,7 +188,7 @@ class _WorkspaceCardState extends ConsumerState<_WorkspaceCard> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _timezone,
+              initialValue: _timezone,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Timezone'),
               items: [
@@ -266,8 +265,9 @@ class _SwitchCard extends ConsumerWidget {
                       await ref
                           .read(selectedWorkspaceIdProvider.notifier)
                           .select(w.id);
-                      if (context.mounted)
+                      if (context.mounted) {
                         AppSnack.success(context, 'Switched to ${w.name}.');
+                      }
                     },
             ),
         ],
@@ -376,9 +376,10 @@ class _IntegrationsCard extends ConsumerWidget {
                               onPressed: () async {
                                 await Clipboard.setData(
                                     ClipboardData(text: webhook));
-                                if (context.mounted)
+                                if (context.mounted) {
                                   AppSnack.success(
                                       context, 'Webhook URL copied.');
+                                }
                               },
                             ),
                           ],

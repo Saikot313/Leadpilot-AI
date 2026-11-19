@@ -37,8 +37,9 @@ final GlobalKey<NavigatorState> _shellNavigatorKey =
 
 String? _redirect(Ref ref, GoRouterState state) {
   final loc = state.uri.path;
-  if (loc == Routes.splash)
+  if (loc == Routes.splash) {
     return null; // the splash screen decides when to leave
+  }
 
   String toSplash() =>
       Uri(path: Routes.splash, queryParameters: {'from': state.uri.toString()})
@@ -56,11 +57,13 @@ String? _redirect(Ref ref, GoRouterState state) {
   final workspaces = ref.read(myWorkspacesProvider);
   // Only bounce to the splash screen while the list has never loaded. A background reload
   // (for example after saving workspace settings) keeps the previous list and does not interrupt the user.
-  if ((workspaces.isLoading && !workspaces.hasValue) || workspaces.hasError)
+  if ((workspaces.isLoading && !workspaces.hasValue) || workspaces.hasError) {
     return toSplash();
+  }
   final list = workspaces.valueOrNull ?? const [];
-  if (list.isEmpty)
+  if (list.isEmpty) {
     return loc == Routes.workspaceSetup ? null : Routes.workspaceSetup;
+  }
   if (loc == Routes.onboarding || loc == Routes.auth) return Routes.dashboard;
   return null;
 }

@@ -55,7 +55,9 @@ class _BookingCalendarScreenState extends ConsumerState<BookingCalendarScreen> {
     setState(() {
       _day = _dateOnly(picked);
       if (_day.isBefore(_anchor) ||
-          _day.difference(_anchor).inDays >= _stripDays) _anchor = _day;
+          _day.difference(_anchor).inDays >= _stripDays) {
+        _anchor = _day;
+      }
     });
   }
 
@@ -539,8 +541,9 @@ class _BookingFormState extends ConsumerState<_BookingForm> {
     setState(() {
       _lead = lead;
       if (_name.text.trim().isEmpty) _name.text = lead.customerName;
-      if (_email.text.trim().isEmpty && lead.hasEmail)
+      if (_email.text.trim().isEmpty && lead.hasEmail) {
         _email.text = lead.customerEmail!;
+      }
     });
   }
 
@@ -646,7 +649,7 @@ class _BookingFormState extends ConsumerState<_BookingForm> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
-            value: _duration,
+            initialValue: _duration,
             isExpanded: true,
             decoration: const InputDecoration(
                 labelText: 'Duration',

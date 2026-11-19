@@ -141,9 +141,28 @@ def _run_llm(
             acc.input_tokens += resp.input_tokens or 0
             acc.output_tokens += resp.output_tokens or 0
         try:
-            return schema.model_validate(extract_json(resp.text))
-        except (ValueError, ValidationError):
-            logger.warning("llm_invalid_output", extra={"attempt": attempt + 1})
+            parsed_json = extract_json(resp.text)
+            return schema.model_validate(parsed_json)
+        except ValueError as exc:
+            logger.warning(
+        "llm_json_parse_failed",
+        extra={
+            "attempt": attempt + 1,
+            "error": str(exc),
+            "response_preview": resp.text[:1000],
+        },
+    )
+
+        except ValidationError as exc:
+            logger.warning(
+        "llm_schema_validation_failed",
+        extra={
+            "attempt": attempt + 1,
+            "errors": exc.errors(include_input=False),
+            "response_preview": resp.text[:1000],
+        },
+    )
+
             last_error = UpstreamError(
                 "The AI returned a response that did not match the required format.", code="llm_invalid_output"
             )

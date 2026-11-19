@@ -98,9 +98,12 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   int _bottomIndex(String loc) {
     if (_isSelected(Routes.dashboard, loc) ||
-        _isSelected(Routes.analytics, loc)) return 0;
-    if (_isSelected(Routes.leads, loc) || _isSelected(Routes.pipeline, loc))
+        _isSelected(Routes.analytics, loc)) {
+      return 0;
+    }
+    if (_isSelected(Routes.leads, loc) || _isSelected(Routes.pipeline, loc)) {
       return 1;
+    }
     if (loc.startsWith('/agent')) return 2;
     if (_isSelected(Routes.approvals, loc)) return 3;
     return 4;

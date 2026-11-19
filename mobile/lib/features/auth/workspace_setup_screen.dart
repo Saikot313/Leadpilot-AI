@@ -143,7 +143,7 @@ class _WorkspaceSetupScreenState extends ConsumerState<WorkspaceSetupScreen> {
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: _industry,
+                            initialValue: _industry,
                             isExpanded: true,
                             decoration: const InputDecoration(
                                 labelText: 'Industry (optional)'),
@@ -157,7 +157,7 @@ class _WorkspaceSetupScreenState extends ConsumerState<WorkspaceSetupScreen> {
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
-                            value: _timezone,
+                            initialValue: _timezone,
                             isExpanded: true,
                             decoration:
                                 const InputDecoration(labelText: 'Timezone'),

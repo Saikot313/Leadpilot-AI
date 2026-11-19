@@ -75,9 +75,10 @@ class _FollowupManagerScreenState extends ConsumerState<FollowupManagerScreen> {
         final aOpen = a.status == FollowupStatus.open;
         final bOpen = b.status == FollowupStatus.open;
         if (aOpen != bOpen) return aOpen ? -1 : 1;
-        if (aOpen)
+        if (aOpen) {
           return (a.dueAt ?? DateTime(9999))
               .compareTo(b.dueAt ?? DateTime(9999));
+        }
         return (b.completedAt ?? b.createdAt ?? DateTime(0))
             .compareTo(a.completedAt ?? a.createdAt ?? DateTime(0));
       });
@@ -280,10 +281,12 @@ class _TaskTile extends ConsumerWidget {
               icon: const Icon(Icons.more_vert_rounded,
                   size: 20, color: AppColors.textSecondary),
               onSelected: (v) {
-                if (v == 'cancel')
+                if (v == 'cancel') {
                   _setStatus(context, ref, FollowupStatus.cancelled);
-                if (v == 'reopen')
+                }
+                if (v == 'reopen') {
                   _setStatus(context, ref, FollowupStatus.open);
+                }
                 if (v == 'delete') _delete(context, ref);
               },
               itemBuilder: (_) => [

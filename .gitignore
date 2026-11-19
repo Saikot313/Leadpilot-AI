@@ -1,23 +1,38 @@
+
 # ---------- Secrets ----------
 .env
 .env.*
 !.env.example
 *.pem
 *.key
+*.p12
+*.pfx
 service-account*.json
 firebase-adminsdk*.json
+firebase-service-account.json
 secrets/
+**/secrets/
 
 # ---------- Python ----------
 __pycache__/
 *.py[cod]
 .venv/
+.venv*/
 venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 htmlcov/
 .coverage
+
+# ---------- Runtime / Database ----------
+*.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+tmp/
+temp/
 
 # ---------- Flutter / Dart ----------
 mobile/.dart_tool/
@@ -29,11 +44,16 @@ mobile/.pub/
 mobile/build/
 mobile/.env
 mobile/android/key.properties
-mobile/android/app/google-services.json
 mobile/ios/Runner/GoogleService-Info.plist
 mobile/ios/Pods/
-mobile/**/*.g.dart
 mobile/coverage/
+mobile/android/google-services.json
+
+# ---------- Android ----------
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/debug/
+mobile/android/app/profile/
 
 # ---------- Firebase ----------
 firebase/.firebase/
@@ -44,6 +64,7 @@ ui-debug.log
 
 # ---------- n8n ----------
 n8n/data/
+**/.n8n/
 
 # ---------- IDE / OS ----------
 .idea/
@@ -52,3 +73,7 @@ n8n/data/
 *.iml
 .DS_Store
 Thumbs.db
+desktop.ini
+
+
+backend/openapi-check.json

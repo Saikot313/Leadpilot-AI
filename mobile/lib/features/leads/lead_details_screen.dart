@@ -624,8 +624,9 @@ class _DraftSheet extends StatelessWidget {
                 onPressed: () async {
                   await Clipboard.setData(
                       ClipboardData(text: '${draft.subject}\n\n${draft.body}'));
-                  if (context.mounted)
+                  if (context.mounted) {
                     AppSnack.success(context, 'Draft copied.');
+                  }
                 },
               ),
             ),

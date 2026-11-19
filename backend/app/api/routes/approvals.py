@@ -1,10 +1,9 @@
-"""Approval endpoints. Sensitive actions only run after a human decision made here."""
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
 from app.core.deps import AppSettings, MemberCtx, Store, WriterCtx
-from app.schemas.approval import ApprovalDecision, ApprovalOut
+from app.schemas.approval import ApprovalDecision, ApprovalDraftUpdate, ApprovalOut
 from app.schemas.common import ID_PATTERN, ApprovalStatus, ListResponse
 from app.services import approval_service
 
@@ -35,4 +34,20 @@ def decide_approval(
     return approval_service.decide(
         store, settings, workspace_id=ctx.workspace_id, approval_id=approval_id,
         user_id=ctx.actor_id, decision=body,
+    )
+
+@router.patch("/{approval_id}/draft", response_model=ApprovalOut)
+def update_approval_draft(
+    approval_id: ApprovalId,
+    body: ApprovalDraftUpdate,
+    ctx: WriterCtx,
+    store: Store,
+):
+    return approval_service.update_draft(
+        store,
+        workspace_id=ctx.workspace_id,
+        approval_id=approval_id,
+        user_id=ctx.actor_id,
+        subject=body.subject,
+        body=body.body,
     )
