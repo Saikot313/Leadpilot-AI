@@ -77,3 +77,10 @@ desktop.ini
 
 
 backend/openapi-check.json
+
+# Additional credential protection
+**/firebase-sa.json
+**/*service-account*.json
+**/*serviceAccount*.json
+
+mobile/android/app/google-services.json
