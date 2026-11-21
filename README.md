@@ -3,7 +3,7 @@
 ### AI-Powered Lead Management, Qualification & Sales Automation Platform
 
 <p align="center">
-  <img src="screenshots/splash_screen.png" alt="LeadPilot AI Splash Screen" width="760">
+  <img src="screenshots/splash_screen.png" alt="LeadPilot AI Splash Screen" width="350">
 </p>
 
 <p align="center">
@@ -63,31 +63,31 @@ It combines a Flutter application, FastAPI backend, Google Gemini AI integration
 ### 1. Dashboard
 
 <p align="center">
-  <img src="screenshots/Dashboard.jpeg" alt="LeadPilot AI Dashboard" width="900">
+  <img src="screenshots/Dashboard.jpeg" alt="LeadPilot AI Dashboard" width="240">
 </p>
 
 ### 2. Lead Management
 
 <p align="center">
-  <img src="screenshots/Lead_Management.jpeg" alt="Lead Management" width="900">
+  <img src="screenshots/Lead_Management.jpeg" alt="Lead Management" width="240">
 </p>
 
 ### 3. Approval Workflow
 
 <p align="center">
-  <img src="screenshots/Approval_Workflow.jpeg" alt="Approval Workflow" width="900">
+  <img src="screenshots/Approval_Workflow.jpeg" alt="Approval Workflow" width="240">
 </p>
 
 ### 4. Approval Workflow History
 
 <p align="center">
-  <img src="screenshots/Approval_Workflow_History.jpeg" alt="Approval Workflow History" width="900">
+  <img src="screenshots/Approval_Workflow_History.jpeg" alt="Approval Workflow History" width="240">
 </p>
 
 ### 5. Email Verification
 
 <p align="center">
-  <img src="screenshots/Email_verification.png" alt="Email Verification" width="760">
+  <img src="screenshots/Email_varification.png" alt="Email_verification" width="760">
 </p>
 
 ## n8n Automation Workflows
@@ -111,7 +111,7 @@ LeadPilot AI is organized around eight dedicated n8n workflows.
 <summary><b>View workflow screenshot</b></summary>
 
 <p align="center">
-  <img src="screenshots/Inquiry_Ingestion_n8n.png" alt="Inquiry Ingestion Workflow" width="950">
+  <img src="screenshots/Inquary_Ingesion_n8n.png" alt="Inquiry Ingestion Workflow" width="900">
 </p>
 </details>
 
