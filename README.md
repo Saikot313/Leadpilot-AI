@@ -1,73 +1,350 @@
-<div align="center">
 
 # LeadPilot AI
+### AI-Powered Lead Management, Qualification & Sales Automation Platform
 
-### From First Inquiry to Qualified Lead, Automatically.
+<p align="center">
+  <img src="screenshots/splash_screen.png" alt="LeadPilot AI Splash Screen" width="760">
+</p>
 
-An early-stage AI-powered lead management and sales automation app concept, currently under active development.
+<p align="center">
+  <b>Capture leads. Understand intent. Automate follow-ups. Keep humans in control.</b>
+</p>
 
-![Development Status](https://img.shields.io/badge/status-initial%20development-orange)
-![Build Status](https://img.shields.io/badge/build-not%20yet%20verified-lightgrey)
-![Platform](https://img.shields.io/badge/platform-Flutter%20%2F%20mobile-blue)
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-Mobile%20App-02569B?logo=flutter&logoColor=white">
+  <img src="https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white">
+  <img src="https://img.shields.io/badge/Gemini-AI%20Integration-4285F4">
+  <img src="https://img.shields.io/badge/n8n-Workflow%20Automation-EA4B71?logo=n8n">
+  <img src="https://img.shields.io/badge/Firebase-Auth%20%26%20Firestore-FFCA28?logo=firebase&logoColor=black">
+  <img src="https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker">
+</p>
 
-<br/>
+LeadPilot AI is an AI-assisted lead management and sales automation platform designed to streamline the sales pipeline, from initial inquiry to follow-up and approval.
 
-<img src="screenshots/splash_screen.png" alt="LeadPilot AI splash screen" width="300"/>
+It combines a Flutter application, FastAPI backend, Google Gemini AI integration, Firebase services, and n8n workflow automation into one connected system.
 
-*Current visual preview — initial app screen.*
+**Core philosophy: AI prepares, automation coordinates, and humans approve consequential outbound actions.**
 
-</div>
+> **Project status:** Eight named n8n workflows are included. Successful execution evidence is currently available for workflows 01, 03, and 05. The other workflows are presented as configured components, not as independently verified successful executions.
 
 ---
 
-## Overview
+## Contents
 
-**LeadPilot AI** is an early-stage mobile app project built around the idea of helping users move from an initial inquiry toward a qualified lead through a streamlined, AI-assisted workflow.
+- [Overview](#overview)
+- [Core Features](#core-features)
+- [Application Screenshots](#application-screenshots)
+- [n8n Automation Workflows](#n8n-automation-workflows)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Engineering & Security](#engineering--security)
+- [Installation](#installation--local-setup)
+- [Configuration](#configuration)
+- [Testing Status](#testing-status)
+- [Roadmap](#roadmap)
 
-At this point, the project has an **initial foundation and a preliminary app screen**. Development is ongoing, and the application is **not yet fully runnable or feature-complete**. The screenshot above represents the current visual state, not a claim that the full product workflow is operational.
+## Core Features
 
-## Current Project Status
-
-> [!IMPORTANT]
-> **Early development — work in progress.** Only an initial stage of the application has been established. The full application flow and functionality are still being developed and have not yet been verified as fully runnable. This repository should not be treated as a finished, stable, or production-ready release.
-
-| Area | Current status |
+| Feature | Description |
 |---|---|
-| Initial app screen / branding | Initial screen available |
-| Full end-to-end app flow | In progress |
-| Complete feature set | Not yet complete |
-| End-to-end runtime verification | Not yet confirmed |
-| Production readiness | Not ready |
+| Lead Inbox | Centralized management of incoming sales inquiries |
+| AI Lead Qualification | AI-assisted lead scoring, intent and urgency assessment |
+| Lead Routing | Workflow-based lead routing and activity logging |
+| Follow-up Generation | AI-assisted follow-up message drafting |
+| Approval Management | Human approval before configured outbound actions |
+| Booking Processing | Booking-related workflow coordination |
+| Error Handling | Error notification and retry workflow |
+| Daily Reporting | Automated operational summary |
+| Authentication | Firebase Authentication integration |
+| Backend API | FastAPI-based application services |
 
-## Current Preview
+## Application Screenshots
 
-The current screenshot is stored in [`screenshot/leadpilot-ai.png`](screenshot/leadpilot-ai.png).
+### 1. Dashboard
 
-It shows the LeadPilot AI splash screen and the tagline:
+<p align="center">
+  <img src="screenshots/Dashboard.jpeg" alt="LeadPilot AI Dashboard" width="900">
+</p>
 
-> From First Inquiry to Qualified Lead, Automatically.
+### 2. Lead Management
 
-## Project Direction
+<p align="center">
+  <img src="screenshots/Lead_Management.jpeg" alt="Lead Management" width="900">
+</p>
 
-The intended direction is to develop LeadPilot AI into a mobile experience focused on lead management and sales workflow assistance. Potential areas of development include:
+### 3. Approval Workflow
 
-- Lead capture and lead tracking
-- Lead qualification workflows
-- Follow-up management
-- AI-assisted interactions
-- Sales workflow automation
+<p align="center">
+  <img src="screenshots/Approval_Workflow.jpeg" alt="Approval Workflow" width="900">
+</p>
 
-These are **planned directions, not claims of completed functionality**. Features will be marked as implemented only as they are developed and verified.
+### 4. Approval Workflow History
 
-## Technology
+<p align="center">
+  <img src="screenshots/Approval_Workflow_History.jpeg" alt="Approval Workflow History" width="900">
+</p>
 
-The mobile project is being developed with **Flutter**. Other integrations and technologies will be documented here as they are implemented and verified.
+### 5. Email Verification
 
-## Running the Project
+<p align="center">
+  <img src="screenshots/Email_verification.png" alt="Email Verification" width="760">
+</p>
 
-The application is still under active development, and a complete, reliable run process has not yet been confirmed for all project functionality.
+## n8n Automation Workflows
 
-If you are exploring the repository locally, make sure Flutter is installed and review the project configuration before attempting to run it. The following is the usual starting point for a Flutter project, but it **does not guarantee that the current application will run successfully**:
+LeadPilot AI is organized around eight dedicated n8n workflows.
+
+| # | Workflow | Responsibility |
+|---|---|---|
+| 01 | Inquiry Ingestion | Receive and process incoming lead inquiries |
+| 02 | AI Lead Qualification | Coordinate AI-assisted lead assessment |
+| 03 | Lead Routing & Logging | Route lead activity and record relevant information |
+| 04 | Follow-up Draft Generation | Prepare suggested follow-up messages |
+| 05 | Approval & Outbound Actions | Handle approval-gated outbound actions |
+| 06 | Booking Processing | Coordinate booking-related events |
+| 07 | Error Notification & Retry | Handle workflow errors and retry notifications |
+| 08 | Daily Summary Report | Prepare daily operational summaries |
+
+### Workflow 01: Inquiry Ingestion
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Inquiry_Ingestion_n8n.png" alt="Inquiry Ingestion Workflow" width="950">
+</p>
+</details>
+
+### Workflow 02: AI Lead Qualification
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/AI_Lead_Qualification_n8n.png" alt="AI Lead Qualification Workflow" width="950">
+</p>
+</details>
+
+### Workflow 03: Lead Routing & Logging
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Lead_Routing_Loggin_n8n.png" alt="Lead Routing and Logging Workflow" width="950">
+</p>
+</details>
+
+### Workflow 04: Follow-up Draft Generation
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Follow_up_Draft_Generation_n8n.png" alt="Follow-up Draft Generation Workflow" width="950">
+</p>
+</details>
+
+### Workflow 05: Approval & Outbound Actions
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Approved_Outbound_Actions_n8n.png" alt="Approved Outbound Actions Workflow" width="950">
+</p>
+</details>
+
+### Workflow 06: Booking Processing
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Booking_Processing_n8n.png" alt="Booking Processing Workflow" width="950">
+</p>
+</details>
+
+### Workflow 07: Error Notification & Retry
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Error_Notification_Retry_n8n.png" alt="Error Notification and Retry Workflow" width="950">
+</p>
+</details>
+
+### Workflow 08: Daily Summary Report
+
+<details>
+<summary><b>View workflow screenshot</b></summary>
+
+<p align="center">
+  <img src="screenshots/Daily_Summery_Report_n8n.png" alt="Daily Summary Report Workflow" width="950">
+</p>
+</details>
+
+## Successful Execution Evidence
+
+The following screenshots document successful executions currently captured for three workflows.
+
+### Workflow 01: Inquiry Ingestion
+
+<p align="center">
+  <img src="screenshots/Successful_Execution_Leadpilot01.png" alt="Successful Workflow 01 Execution" width="950">
+</p>
+
+### Workflow 03: Lead Routing & Logging
+
+<p align="center">
+  <img src="screenshots/Successful_Execution_Leadpilot03.png" alt="Successful Workflow 03 Execution" width="950">
+</p>
+
+### Workflow 05: Approval & Outbound Actions
+
+<p align="center">
+  <img src="screenshots/Successful_Execution_Leadpilot05.png" alt="Successful Workflow 05 Execution" width="950">
+</p>
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Incoming Lead Inquiry] --> B[Flutter Application]
+    B --> C[FastAPI Backend]
+
+    C --> D[Firebase Authentication]
+    C --> E[Cloud Firestore]
+    C --> F[Gemini AI Integration]
+
+    C --> G[n8n Automation Engine]
+
+    G --> H[Inquiry Processing]
+    G --> I[AI Qualification]
+    G --> J[Lead Routing and Logging]
+    G --> K[Follow-up Draft Generation]
+
+    K --> L[Human Approval]
+    L --> M[Approved Outbound Actions]
+
+    G --> N[Booking Processing]
+    G --> O[Error Notification and Retry]
+    G --> P[Daily Summary Report]
+```
+
+### Architecture Components
+
+- **Frontend:** Flutter-based application for lead and workflow management.
+- **Backend:** FastAPI for application APIs and service integration.
+- **AI Engine:** Google Gemini API for AI-assisted lead assessment and content generation.
+- **Authentication & Database:** Firebase Authentication and Cloud Firestore.
+- **Automation Engine:** n8n for multi-step workflow orchestration.
+- **Containerization:** Docker Compose for local backend and n8n services.
+
+## Technology Stack
+
+| Category | Technologies |
+|---|---|
+| Frontend | Flutter, Dart |
+| Backend | Python, FastAPI |
+| AI Integration | Google Gemini API |
+| Database | Firebase Cloud Firestore |
+| Authentication | Firebase Authentication |
+| Workflow Automation | n8n |
+| API Documentation | OpenAPI, Swagger UI |
+| Containerization | Docker, Docker Compose |
+| Version Control | Git, GitHub |
+
+## Engineering & Security
+
+LeadPilot AI is designed around controlled AI-assisted automation.
+
+- **Structured AI output:** Validate model responses against the expected application data structure.
+- **Retry handling:** Use bounded retries for recoverable AI and integration failures.
+- **Prompt-injection awareness:** Treat external lead messages as untrusted input.
+- **Human approval:** Require approval for configured customer-facing outbound actions.
+- **Webhook protection:** Use shared-secret or signed-request checks where configured.
+- **Idempotency:** Design workflow actions to reduce duplicate processing.
+- **Auditability:** Maintain traces of important application and workflow actions.
+- **Workspace-aware access:** Scope data operations to the relevant authenticated workspace.
+
+These describe the project's engineering approach and configured controls. They are not a blanket production security certification.
+
+## Installation & Local Setup
+
+### Prerequisites
+
+- Git
+- Flutter SDK
+- Python compatible with backend dependencies
+- Docker Desktop
+- Firebase project
+- Firebase service-account credentials
+- Google Gemini API key
+
+### 1. Clone the repository
+
+```bash
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd LeadpilotAI
+```
+
+Replace the placeholder with your actual repository URL.
+
+### 2. Configure environment variables
+
+Using PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+```
+
+Update the local environment files with your own configuration.
+
+**Never commit real `.env` files or credentials.**
+
+### 3. Configure Firebase credentials
+
+Place the Firebase Admin service-account JSON at the location expected by the current Docker Compose configuration:
+
+```text
+backend/secrets/firebase-sa.json
+```
+
+Keep this file private and excluded from version control.
+
+### 4. Start backend and n8n
+
+```bash
+docker compose up --build -d
+```
+
+Check running services:
+
+```bash
+docker compose ps
+```
+
+View logs:
+
+```bash
+docker compose logs -f backend
+docker compose logs -f n8n
+```
+
+### 5. Access local services
+
+| Service | Local URL |
+|---|---|
+| FastAPI Backend | http://localhost:8080 |
+| Swagger API Docs | http://localhost:8080/docs |
+| n8n | http://localhost:5678 |
+
+Use the configured port values if your local environment differs.
+
+### 6. Run the Flutter application
 
 ```bash
 cd mobile
@@ -75,32 +352,77 @@ flutter pub get
 flutter run
 ```
 
-Some features or setup steps may be incomplete while development continues.
+Select an available emulator or connected device. Complete Android SDK setup and configure Firebase client settings for your environment.
+
+## Configuration
+
+The project provides example environment files:
+
+- `.env.example`
+- `backend/.env.example`
+
+Common configuration areas include:
+
+| Area | Example variables |
+|---|---|
+| n8n | `N8N_HOST`, `N8N_PORT`, `N8N_WEBHOOK_URL`, `N8N_ENCRYPTION_KEY` |
+| Service authentication | `N8N_SHARED_SECRET`, `BACKEND_CALLBACK_SECRET` |
+| Backend | `APP_ENV`, `LOG_LEVEL`, `CORS_ORIGINS` |
+| AI | `LLM_PROVIDER`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| Firebase | `FIREBASE_PROJECT_ID`, `GOOGLE_APPLICATION_CREDENTIALS` |
+| Email and reporting | `OUTBOUND_FROM_EMAIL`, `SUMMARY_TO_EMAIL` |
+
+Use the checked-out example files as the source of truth for exact supported variables.
+
+## Testing Status
+
+Successful execution evidence currently available:
+
+- Workflow 01: Inquiry Ingestion
+- Workflow 03: Lead Routing & Logging
+- Workflow 05: Approval & Outbound Actions
+
+Workflow screenshots are included for all eight named automations. The remaining workflows should be independently tested before describing them as successfully executed or production-ready.
+
+Useful local checks:
+
+```bash
+docker compose config --quiet
+docker compose ps
+```
+
+Flutter checks:
+
+```bash
+cd mobile
+flutter analyze
+flutter test
+```
+
+Run backend tests using the test command configured in the repository.
+
+## Security Notes
+
+- Never commit `.env`, Firebase service-account JSON, private keys, API tokens, or real credentials.
+- Keep Firebase service-account credentials outside version control.
+- Apply least-privilege Firebase security rules and backend authorization checks.
+- Restrict CORS origins outside local development.
+- Protect n8n and backend webhooks with the configured authentication mechanism.
+- Keep human approval before configured customer-facing outbound messages.
+- Rotate credentials that may have been exposed in Git history. Removing a file from the latest commit does not remove it from earlier commits.
 
 ## Roadmap
 
-- [x] Establish the initial app screen and visual identity
-- [ ] Complete the core application flow
-- [ ] Implement and verify lead-management functionality
-- [ ] Develop and verify follow-up and automation workflows
-- [ ] Validate navigation and app state across screens
-- [ ] Complete end-to-end testing
-- [ ] Prepare a stable demo or release
-
-The roadmap may change as implementation progresses.
-
-## Contributing / Feedback
-
-This is an evolving project. Feedback, ideas, and constructive suggestions are welcome. Please keep in mind that functionality and project structure may change during active development.
-
-## Disclaimer
-
-LeadPilot AI is currently a **work in progress**. The repository documents an initial development stage and should not be interpreted as a completed product, a fully functional release, or a production-ready application.
+- [ ] Verify successful execution of workflows 02, 04, 06, 07, and 08.
+- [ ] Add automated backend tests for lead intake and workspace isolation.
+- [ ] Add end-to-end tests for inquiry-to-approved-follow-up.
+- [ ] Add monitoring for workflow failures and integration health.
+- [ ] Validate retry and idempotency behavior.
+- [ ] Prepare production deployment documentation.
 
 ---
 
-<div align="center">
-
-**LeadPilot AI** · Initial Development Stage
-
-</div>
+<p align="center">
+  <b>LeadPilot AI</b><br>
+  AI-assisted lead management with controlled, human-approved sales automation.
+</p>
